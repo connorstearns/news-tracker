@@ -6,6 +6,9 @@ from datetime import datetime, timedelta
 
 import requests
 import streamlit as st
+import os
+
+
 
 st.set_page_config(
     page_title="NewsAPI Query Tool",
@@ -16,14 +19,16 @@ st.set_page_config(
 st.title("📰 NewsAPI Query Tool")
 st.markdown("Search for news articles by keyword and date range using NewsAPI.")
 
-st.sidebar.header("Configuration")
-backend_url = st.sidebar.text_input(
-    "Backend URL",
-    value="http://localhost:8000",
-    help="The base URL of the FastAPI backend (editable for hosted deployments)"
-)
+backend_url = os.getenv("BACKEND_URL")
+
+if not backend_url:
+    backend_url = st.sidebar.text_input(
+        "Backend URL",
+        value="http://localhost:8000",
+        help="Used only for local development"
+    )
+
 backend_url = backend_url.rstrip("/")
-st.sidebar.markdown("---")
 
 st.header("Search Parameters")
 
