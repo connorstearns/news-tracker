@@ -8,8 +8,6 @@ import requests
 import streamlit as st
 import os
 
-
-
 st.set_page_config(
     page_title="NewsAPI Query Tool",
     page_icon="📰",
@@ -79,17 +77,17 @@ if st.button("🔍 Search", type="primary"):
     else:
         from_date = date_range[0].strftime("%Y-%m-%d")
         to_date = date_range[1].strftime("%Y-%m-%d")
-        
+
         params = {
             "q": query,
             "from": from_date,
             "to": to_date,
             "limit": limit
         }
-        
+
         if domains.strip():
             params["domains"] = domains.strip()
-        
+
         with st.spinner("Searching for articles..."):
             try:
                 response = requests.get(
@@ -97,25 +95,25 @@ if st.button("🔍 Search", type="primary"):
                     params=params,
                     timeout=60
                 )
-                
+
                 if response.status_code == 200:
                     data = response.json()
-                    
+
                     if data.get("ok"):
                         total = data.get("totalResults", 0)
                         articles = data.get("articles", [])
-                        
+
                         st.success(f"**Total Results Found: {total:,}** (from {from_date} to {to_date})")
-                        
+
                         if articles:
                             st.subheader(f"Showing {len(articles)} article(s)")
-                            
+
                             for i, article in enumerate(articles, 1):
                                 title = article.get("title", "No title")
                                 source = article.get("source", "Unknown source")
                                 published = article.get("publishedAt", "")
                                 url = article.get("url", "")
-                                
+
                                 if published:
                                     try:
                                         dt = datetime.fromisoformat(published.replace("Z", "+00:00"))
@@ -124,7 +122,7 @@ if st.button("🔍 Search", type="primary"):
                                         published_display = published
                                 else:
                                     published_display = "Unknown date"
-                                
+
                                 with st.container():
                                     st.markdown(f"**{i}. [{title}]({url})**")
                                     st.caption(f"📌 {source} | 🕐 {published_display}")
@@ -140,7 +138,7 @@ if st.button("🔍 Search", type="primary"):
                         st.error(f"API Error: {error_msg}")
                 else:
                     st.error(f"Backend returned status code: {response.status_code}")
-                    
+
             except requests.exceptions.ConnectionError:
                 st.error(
                     f"Could not connect to backend at {backend_url}. "
