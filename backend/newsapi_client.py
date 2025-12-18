@@ -24,29 +24,11 @@ def newsapi_everything(
     language: str = "en",
     domains: Optional[str] = None,
     page_size: int = 100,
-    page: int = 1
+    page: int = 1,
+    title_only: bool = True,
 ) -> dict:
-    """
-    Query the NewsAPI /everything endpoint.
-    
-    Args:
-        q: Search query string (supports NewsAPI syntax like OR, AND, quotes)
-        from_date: Start date in YYYY-MM-DD format
-        to_date: End date in YYYY-MM-DD format
-        language: Language code (default: "en")
-        domains: Comma-separated list of domains to filter (optional)
-        page_size: Number of results per page (max 100)
-        page: Page number for pagination
-    
-    Returns:
-        Parsed JSON response from NewsAPI
-    
-    Raises:
-        requests.exceptions.RequestException: On network errors
-        ValueError: If API key is not set
-    """
     api_key = get_api_key()
-    
+
     params = {
         "q": q,
         "from": from_date,
@@ -55,15 +37,19 @@ def newsapi_everything(
         "pageSize": page_size,
         "page": page,
         "apiKey": api_key,
-        "sortBy": "publishedAt"
+        "sortBy": "publishedAt",
     }
-    
+
+    # 🔑 key change: restrict search scope
+    if title_only:
+        params["searchIn"] = "title"
+
     if domains:
         params["domains"] = domains
-    
+
     response = requests.get(NEWSAPI_BASE_URL, params=params, timeout=30)
-    
+
     return {
         "status_code": response.status_code,
-        "data": response.json()
+        "data": response.json(),
     }
