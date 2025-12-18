@@ -117,38 +117,17 @@ async def get_count(
 
 
 @app.get("/search")
-async def search_articles(
-    q: str = Query(..., description="Keyword query string"),
-    from_date: str = Query(..., alias="from", description="Start date in YYYY-MM-DD format"),
-    to_date: str = Query(..., alias="to", description="End date in YYYY-MM-DD format"),
-    language: str = Query("en", description="Language code"),
-    domains: Optional[str] = Query(None, description="Comma-separated domains to filter"),
-    limit: int = Query(20, ge=1, le=100, description="Number of articles to return (1-100)")
+def search(
+    q: str,
+    from_date: str,
+    to_date: str,
+    language: str = "en",
+    domains: str | None = None,
+    limit: int = 20,
+    title_only: bool = True,
 ):
-    """
-    Search for articles matching the query for a date range.
-    Returns article details including title, source, publishedAt, and URL.
-    """
-    if not os.environ.get("NEWSAPI_KEY"):
-        return {
-            "ok": False,
-            "error": "NEWSAPI_KEY is not configured. Please add it to Replit Secrets."
-        }
-    
-    if not validate_date(from_date):
-        return {
-            "ok": False,
-            "error": f"Invalid from date format: {from_date}. Expected YYYY-MM-DD."
-        }
-    
-    if not validate_date(to_date):
-        return {
-            "ok": False,
-            "error": f"Invalid to date format: {to_date}. Expected YYYY-MM-DD."
-        }
-    
-    limit = max(1, min(100, limit))
-    
+    page_size = min(max(limit, 1), 100)
+
     try:
         result = newsapi_everything(
             q=q,
@@ -156,42 +135,45 @@ async def search_articles(
             to_date=to_date,
             language=language,
             domains=domains,
-            page_size=limit,
-            page=1
+            page_size=page_size,
+            page=1,
+            title_only=title_only,
         )
-        
-        if result["status_code"] != 200:
-            return {
-                "ok": False,
-                "error": result["data"],
-                "status_code": result["status_code"]
-            }
-        
-        raw_articles = result["data"].get("articles", [])
-        articles = [
-            {
-                "title": article.get("title", ""),
-                "source": article.get("source", {}).get("name", "Unknown"),
-                "publishedAt": article.get("publishedAt", ""),
-                "url": article.get("url", "")
-            }
-            for article in raw_articles[:limit]
-        ]
-        
-        return {
-            "ok": True,
-            "q": q,
-            "from": from_date,
-            "to": to_date,
-            "totalResults": result["data"].get("totalResults", 0),
-            "articles": articles
-        }
-        
     except Exception as e:
+        # backend error (network issue, timeout, etc.)
+        raise HTTPException(status_code=502, detail=f"NewsAPI request failed: {e}")
+
+    # NewsAPI responded but not OK
+    if result.get("status_code") != 200:
         return {
             "ok": False,
-            "error": str(e)
+            "error": result.get("data"),
+            "status_code": result.get("status_code"),
         }
+
+    data = result.get("data", {}) or {}
+    raw_articles = data.get("articles", []) or []
+
+    # Shape articles for your frontend
+    articles = [
+        {
+            "title": a.get("title", ""),
+            "description": a.get("description", ""),  # useful for expanders + tagging
+            "source": (a.get("source") or {}).get("name", "Unknown"),
+            "publishedAt": a.get("publishedAt", ""),
+            "url": a.get("url", ""),
+        }
+        for a in raw_articles[:limit]
+    ]
+
+    return {
+        "ok": True,
+        "q": q,
+        "from": from_date,
+        "to": to_date,
+        "totalResults": data.get("totalResults", 0),
+        "articles": articles,
+    }
 
 
 if __name__ == "__main__":
