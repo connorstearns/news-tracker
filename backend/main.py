@@ -81,7 +81,7 @@ async def get_count(
             "ok": False,
             "error": f"Invalid to date format: {to_date}. Expected YYYY-MM-DD."
         }
-    
+
     try:
         result = newsapi_everything(
             q=q,
@@ -89,10 +89,11 @@ async def get_count(
             to_date=to_date,
             language=language,
             domains=domains,
-            page_size=1,
-            page=1
+            page_size=min(limit, 100),
+            page=1,
+            title_only=True,   # 👈 ADD THIS
         )
-        
+
         if result["status_code"] != 200:
             return {
                 "ok": False,
